@@ -5,8 +5,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>xeokit BIM Viewer</title>
+    <title>3D View Bangga Solution</title>
     <!-- <link rel="stylesheet" href="./lib/fontawesome-free-5.11.2-web/css/all.min.css" type="text/css"/> -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/css/bootstrap.min.css"
+        integrity="sha384-zCbKRCUGaJDkqS1kPbPd7TveP5iyJE0EjAuZQTgFLD2ylzuqKfdKlfG/eSrtxUkn" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css"
         integrity="sha512-KfkfwYDsLkIlwQp6LFnl8zNdLGxu9YAA1QvwINks4PhcElQSvqcyVLLD9aMhXd13uQjoXtEKNosOWaZqXgel0g=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
@@ -23,23 +25,37 @@
         class="xeokit-i18n inspector_toggle_label xeokit-btn fas fa-info-circle fa-2x"
         data-xeokit-i18ntip="toolbar.toggleProperties" data-tippy-content="Toggle properties"></label>
     <div id="myExplorer"></div>
+    <div class="content-overlay" id="viewer-overlay"></div>
+
     <div id="myToolbar"></div>
     <div id="myInspector"></div>
-    <div id="myViewer">
-        <canvas id="myCanvas"></canvas>
-        <canvas id="myNavCubeCanvas"></canvas>
+    <div class="content-container">
+        <div id="myViewer">
+            <canvas id="myCanvas"></canvas>
+            <canvas id="myNavCubeCanvas"></canvas>
+        </div>
+
     </div>
+    <!-- <div class="slideout-sidebar">
+        <div id="myExplorer"></div>
+    </div> -->
 </body>
 
 <!-- Tooltips libraries -->
 <script src="./lib/popper.js"></script>
 <script src="./lib/tippy.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.slim.min.js"
+    integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj"
+    crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-fQybjgWLrvvRgtW6bFlB7jaZrFsaBXjsOMm/tB9LTS58ONXgqbR9W8oWht/amnpF"
+    crossorigin="anonymous"></script>
 <script type="module">
     import { Server, BIMViewer, LocaleService } from "./node_modules/@xeokit/xeokit-bim-viewer/dist/xeokit-bim-viewer.es.js";
 
     import { messages as localeMessages } from "./node_modules/@xeokit/xeokit-bim-viewer/dist/messages.js";
 
-    import { XKTLoaderPlugin, Viewer, TreeViewPlugin, WebIFCLoaderPlugin } from "./node_modules/@xeokit/xeokit-sdk/dist/xeokit-sdk.min.es.js";
+    import { XKTLoaderPlugin, Viewer, TreeViewPlugin, AnnotationsPlugin, DistanceMeasurementsPlugin } from "./node_modules/@xeokit/xeokit-sdk/dist/xeokit-sdk.min.es.js";
 
 
 
@@ -65,8 +81,43 @@
             busyModelBackdropElement: document.getElementById("myViewer"),
             enableEditModels: enableEditModels
         });
+        const customToolbar = `<div class="xeokit-btn-group">
+            <button type="button" class="xeokit-i18n xeokit-anno xeokit-btn fa fa-comment-dots fa-2x" data-xeokit-i18ntip="toolbar.resetViewTipx" data-tippy-content="Create Annotation"></button>
+            <button type="button" class="xeokit-i18n xeokit-measur xeokit-btn fa fa-ruler-combined fa-2x" data-xeokit-i18ntip="toolbar.resetViewTipx" data-tippy-content="Distance Measuring"></button>
+        </div>`;
+        $('.xeokit-toolbar').append(customToolbar);
 
+        $(document).on('click', '.xeokit-anno', function () {
+            if ($(this).hasClass("active")) {
+                $(this).removeClass("active");
+                if (this._onPick !== undefined) {
+                    bimViewer.viewer.scene.input.off(this._onPick)
+                    this._onPick = undefined;
+                }
+            } else {
+                $(this).addClass("active");
+                this._onPick = annotation(bimViewer.viewer);
+              
+            }
 
+        });
+
+        const distanceMeasurements = new DistanceMeasurementsPlugin(bimViewer.viewer);
+
+        $(document).on('click', '.xeokit-measur', function () {
+            if ($(this).hasClass("active")) {
+                $(this).removeClass("active");
+                distanceMeasurements.control.deactivate();
+             
+            } else {
+                $(this).addClass("active");
+                distanceMeasurements.control.activate();
+              
+            }
+
+        });
+
+        bimViewer.viewer.pickSurfacePrecisionEnabled = true;
         bimViewer.localeService.on("updated", () => {
             const localizedElements = document.querySelectorAll('.xeokit-i18n');
             localizedElements.forEach((localizedElement) => {
@@ -145,26 +196,12 @@
 
         const modelNode = xktLoader.load({
             id: "myModel",
-            src: "./ifcCon.xkt",
+            src: "./example.ifc.xkt",
             metaModelSrc: "./example.json",
             edges: true, // Emphasise edges
             excludeTypes: ["IfcSpace"],
             objectDefaults: {}
         });
-
-        // const ifcLoader = new WebIFCLoaderPlugin(bimViewer.viewer, {
-        //     //wasmPath: "../dist/" // <<------- Path to web-ifc.wasm, which does the IFC parsing for us
-        //     wasmPath: "./node_modules/@xeokit/xeokit-sdk/dist/"
-        // });
-
-        // const model = ifcLoader.load({
-        //     id: "myModel",
-        //     src: "./example.ifc",
-        //     loadMetadata: true, // Default
-        //     excludeTypes: ["IfcSpace"],
-        //     edges: true
-        // });
-
 
         function parseHashParams() {
             const params = getHashParams();
@@ -263,6 +300,71 @@
             }
             return hashParams;
         }
+
+
+        //------------------------------------------------------------------------------------------------------------------
+        // Create an AnnotationsPlugin, with which we'll create annotations
+        //------------------------------------------------------------------------------------------------------------------
+
+
+        function annotation(viewer) {
+
+            var annotations = new AnnotationsPlugin(viewer, {
+
+                markerHTML: "<div class='annotation-marker' style='background-color: {{markerBGColor}};'>{{glyph}}</div>",
+                labelHTML: "<div class='annotation-label' style='background-color: {{labelBGColor}};'><div class='annotation-title'><input class='form-control' name='title' value='{{title}}'/></div><div class='annotation-desc'><textarea name='desc' class='form-control'>{{description}}</textarea></div><button class='save btn btn-primary btn-sm'>Save</button></div>",
+
+                values: {
+                    markerBGColor: "red",
+                    glyph: "X",
+                    title: "Untitled",
+                    description: "No description"
+                },
+
+                surfaceOffset: 0.1
+            });
+
+            annotations.on("markerClicked", (annotation) => {
+                annotation.labelShown = !annotation.labelShown;
+            });
+
+            //------------------------------------------------------------------------------------------------------------------
+            // Use the AnnotationsPlugin to create an annotation wherever we click on an object
+            //------------------------------------------------------------------------------------------------------------------
+
+            var i = 1;
+
+            var c = viewer.scene.input.on("mouseclicked", (coords) => {
+
+                const pickResult = viewer.scene.pick({
+                    canvasPos: coords,
+                    pickSurface: true  // <<------ This causes picking to find the intersection point on the entity
+                });
+                if (pickResult) {
+
+                    const annotation = annotations.createAnnotation({
+                        id: "myAnnotation" + i,
+                        pickResult: pickResult, // <<------- initializes worldPos and entity from PickResult
+                        occludable: true,       // Optional, default is true
+                        markerShown: true,      // Optional, default is true
+                        labelShown: true,       // Optional, default is true
+                        values: {               // HTML template values
+                            glyph: "A" + i,
+                            title: "My annotation " + i,
+                            description: "My description " + i
+                        },
+                    });
+
+                    i++;
+                }
+            });
+            return c;
+        }
+        //------------------------------------------------------------------------------------------------------------------
+        // Create an DistanceMeasurementsPlugin, activate its DistanceMeasurementsControl
+        //------------------------------------------------------------------------------------------------------------------
+
+        
 
         window.bimViewer = bimViewer;
 
